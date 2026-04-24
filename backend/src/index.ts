@@ -32,10 +32,26 @@ validateGeminiApiKey();
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000,http://127.0.0.1:5173,http://localhost:5173').split(',');
+const isDev = (process.env.NODE_ENV || 'development') !== 'production';
 
 // Middleware
 app.use(cors({
-  origin: CORS_ORIGINS,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (CORS_ORIGINS.includes(origin)) return callback(null, true);
+    // In local dev, allow any localhost/loopback origin and Cursor/VSCode webview hosts.
+    if (
+      isDev &&
+      (
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin) ||
+        /localhost/i.test(origin) ||
+        /webview/i.test(origin)
+      )
+    ) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
 }));
 // Increase body size limit to handle base64-encoded images (50MB limit)
