@@ -64,13 +64,6 @@ const MenuBar: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout
           <div className="hidden sm:flex sm:items-center sm:ml-6">
             <div className="flex items-center gap-3">
               <span className="text-sm font-medium text-gray-700">{user.username}</span>
-              <button
-                onClick={onLogout}
-                className="p-2 text-gray-500 hover:text-red-600 transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
             </div>
           </div>
           <div className="flex items-center sm:hidden">
@@ -107,13 +100,7 @@ const MenuBar: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout
                 </Link>
               );
             })}
-            <button
-              onClick={onLogout}
-              className="w-full flex items-center px-4 py-3 text-base font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 transition-colors border-l-4 border-transparent"
-            >
-              <LogOut className="w-5 h-5 mr-3" />
-              Logout
-            </button>
+
           </div>
         </div>
       )}
@@ -122,7 +109,7 @@ const MenuBar: React.FC<{ user: any; onLogout: () => void }> = ({ user, onLogout
 };
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>({ username: 'Salesforce Team' });
 
   useEffect(() => {
     const savedUser = localStorage.getItem('spb_user');
