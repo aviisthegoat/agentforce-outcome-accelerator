@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Synthetic Persona Builder",
+  "description": "Generate AI-powered synthetic personas and engage in multi-persona conversations using Gemini 3.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

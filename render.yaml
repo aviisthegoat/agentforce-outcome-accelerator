@@ -1,0 +1,52 @@
+# Render.com deployment configuration
+# This file makes it easy to deploy both services on Render
+#
+# REQUIRED: After first deploy, set these in the Render dashboard to fix "Failed to fetch":
+#   persona-builder-frontend → VITE_API_URL = https://persona-builder-backend.onrender.com/api
+#   persona-builder-backend  → CORS_ORIGIN  = https://persona-builder-frontend.onrender.com
+# Then redeploy the frontend so the new API URL is baked into the build.
+
+services:
+  # Backend API Service
+  - type: web
+    name: persona-builder-backend
+    env: node
+    rootDir: backend
+    plan: free  # Change to 'starter' or 'standard' for production
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        generateValue: true  # Render will generate a secure secret
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        sync: false  # REQUIRED: set to your frontend URL, e.g. https://persona-builder-frontend.onrender.com
+      - key: GEMINI_API_KEY
+        sync: false  # Set this manually with your API key
+    # Link to PostgreSQL database
+    # database: persona-builder-db  # Uncomment and create database first
+
+  # Frontend Static Site
+  - type: web
+    name: persona-builder-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false  # REQUIRED: set to backend API URL, e.g. https://persona-builder-backend.onrender.com/api
+      - key: VITE_GEMINI_API_KEY
+        sync: false  # Set this manually with your API key
+
+databases:
+  # PostgreSQL Database
+  - name: persona-builder-db
+    plan: free  # Change to 'starter' or 'standard' for production
+    databaseName: persona_builder
+    user: persona_builder_user
+
