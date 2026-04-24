@@ -24,7 +24,7 @@ const HomePage: React.FC = () => {
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 via-violet-600 to-pink-600">
             Emotionally Intelligent
           </span><br />
-          Synthetic Personas
+          Agentforce Agents
         </h1>
         <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600 font-medium leading-relaxed">
           Simulate true human decision-making with need-based logic. <br className="hidden md:block" />
@@ -37,7 +37,7 @@ const HomePage: React.FC = () => {
             className="inline-flex items-center px-10 py-5 border border-transparent text-lg font-black rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 hover:-translate-y-1 active:scale-95"
           >
             <Plus className="mr-2 w-6 h-6" />
-            Build your first persona
+            Configure your first agent
           </Link>
         </div>
       </div>
@@ -144,7 +144,7 @@ const HomePage: React.FC = () => {
             Need-Based Experts.
           </h2>
           <p className="text-gray-400 text-lg mb-8 leading-relaxed font-medium">
-            Assemble up to 5 personas to interact simultaneously. Witness how different emotional frameworks collide, negotiate, and collaborate to reach a decision.
+            Assemble up to 5 agents to interact simultaneously. Witness how different emotional frameworks collide, negotiate, and collaborate to reach a decision.
           </p>
           <Link
             to="/chat"

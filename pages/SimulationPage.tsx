@@ -376,7 +376,7 @@ const SimulationPage: React.FC = () => {
                  Validation Engine
               </div>
               <h1 className="text-5xl font-black text-gray-900 mb-4 tracking-tight">Execute Simulation</h1>
-              <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">Select a specialized testing mode to see how your synthetic personas react to your work.</p>
+              <p className="text-xl text-gray-500 font-medium max-w-2xl mx-auto">Select a specialized testing mode to see how your agents react to your work.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -428,11 +428,11 @@ const SimulationPage: React.FC = () => {
 
               <div className="space-y-10">
                 <div className="space-y-4">
-                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">1. Select Target Persona</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">1. Select Target Agent</label>
                   {personas.length === 0 ? (
                     <div className="p-6 bg-amber-50 border border-amber-100 rounded-2xl text-amber-700 text-sm font-bold flex gap-3">
                        <AlertCircle className="w-5 h-5" />
-                       You haven't built any personas yet.
+                       You haven't configured any agents yet.
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

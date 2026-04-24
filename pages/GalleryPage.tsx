@@ -61,14 +61,14 @@ const GalleryPage: React.FC = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Personas</h1>
-          <p className="text-gray-500">Your library of synthetic experts and users.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Deployed Agents</h1>
+          <p className="text-gray-500">Your library of configured Agentforce agents.</p>
         </div>
         <Link
           to="/build"
           className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
         >
-          <User className="w-4 h-4 mr-2" /> New Persona
+          <User className="w-4 h-4 mr-2" /> New Agent
         </Link>
       </div>
 
@@ -77,7 +77,7 @@ const GalleryPage: React.FC = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search personas..."
+            placeholder="Search agents..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
@@ -91,8 +91,8 @@ const GalleryPage: React.FC = () => {
              className="border border-gray-200 rounded-xl py-2 px-4 text-sm focus:ring-2 focus:ring-indigo-500"
            >
              <option value="all">All Types</option>
-             <option value="synthetic_user">Synthetic User</option>
-             <option value="advisor">Advisor</option>
+             <option value="synthetic_user">Autonomous Agent</option>
+             <option value="advisor">Advisor Agent</option>
            </select>
         </div>
       </div>
@@ -116,9 +116,9 @@ const GalleryPage: React.FC = () => {
       ) : (
         <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
           <User className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">No personas found</h3>
-          <p className="text-gray-500">Start by building your first synthetic persona.</p>
-          <Link to="/build" className="mt-4 inline-block text-indigo-600 font-semibold hover:underline">Build Persona</Link>
+          <h3 className="text-lg font-medium text-gray-900">No agents found</h3>
+          <p className="text-gray-500">Start by configuring your first agent.</p>
+          <Link to="/build" className="mt-4 inline-block text-indigo-600 font-semibold hover:underline">Configure Agent</Link>
         </div>
       )}
 
@@ -142,8 +142,8 @@ const PersonaCard: React.FC<{
   const navigate = useNavigate();
 
   const typeLabels: Record<string, { label: string; color: string }> = {
-    synthetic_user: { label: 'Synthetic User', color: 'bg-blue-100 text-blue-700' },
-    advisor: { label: 'Advisor', color: 'bg-purple-100 text-purple-700' },
+    synthetic_user: { label: 'Autonomous Agent', color: 'bg-blue-100 text-blue-700' },
+    advisor: { label: 'Advisor Agent', color: 'bg-purple-100 text-purple-700' },
   };
 
   return (
@@ -173,7 +173,7 @@ const PersonaCard: React.FC<{
              }}
              disabled={isDeleting}
              className={`p-2 bg-white/80 backdrop-blur rounded-lg text-red-600 hover:bg-white transition-colors shadow-sm cursor-pointer ${isDeleting ? 'animate-pulse' : ''}`}
-             title="Delete Persona"
+             title="Delete Agent"
            >
              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
            </button>

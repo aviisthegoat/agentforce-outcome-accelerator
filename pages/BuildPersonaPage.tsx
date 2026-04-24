@@ -95,7 +95,7 @@ const SyntheticUserForm: React.FC<{ onComplete: () => void }> = ({ onComplete })
       const personas: { name: string; title: string }[] = [];
       for (let index = 0; index < personasRaw.length; index++) {
         const p = personasRaw[index] as { name?: string; title?: string };
-        const titleStr = (typeof p?.title === 'string' && p.title.trim()) ? p.title.trim() : 'Synthetic Persona';
+        const titleStr = (typeof p?.title === 'string' && p.title.trim()) ? p.title.trim() : 'Autonomous Agent';
         let nameStr = (typeof p?.name === 'string' && p.name.trim()) ? p.name.trim() : '';
         let name = (nameStr && nameStr !== titleStr) ? nameStr : await geminiService.generatePersonaName(titleStr, Array.from(usedNames));
         if (!name || name === 'Persona') name = titleStr;
@@ -345,7 +345,7 @@ const AdvisorForm: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
         </div>
       )}
       <button type="submit" disabled={loading || (sourceMode === 'linkedin' ? !linkedinText.trim() : !fileContent)} className="w-full py-6 bg-violet-600 text-white font-black text-lg rounded-3xl shadow-xl hover:bg-violet-700 disabled:opacity-50 transition-all">
-        {loading ? <div className="flex flex-col items-center"><Loader2 className="animate-spin mb-1" /> <span className="text-xs uppercase tracking-widest">{loadingStage}</span></div> : 'Submit for Advisor Profiling'}
+        {loading ? <div className="flex flex-col items-center"><Loader2 className="animate-spin mb-1" /> <span className="text-xs uppercase tracking-widest">{loadingStage}</span></div> : 'Submit for Agent Profiling'}
       </button>
     </form>
   );
@@ -372,15 +372,15 @@ const BuildPersonaPage: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
           <TypeCard
-            title="Synthetic User"
-            description="Multi-layered persona generation for market research and product stress-testing."
+            title="Autonomous Agent"
+            description="Multi-layered agent configuration for market research and product stress-testing."
             icon={Target}
             onClick={() => setSelectedType('synthetic_user')}
             theme="indigo"
           />
           <TypeCard
-            title="Advisor"
-            description="Create advisors from LinkedIn profile text or PDF/document upload. Deep analysis with Red Team critical evaluation."
+            title="Advisor Agent"
+            description="Configure agents from LinkedIn profile text or PDF/document upload. Deep analysis with Red Team critical evaluation."
             icon={Sparkles}
             onClick={() => setSelectedType('advisor')}
             theme="violet"

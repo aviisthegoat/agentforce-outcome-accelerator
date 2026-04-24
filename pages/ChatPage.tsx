@@ -255,12 +255,12 @@ const ChatPage: React.FC = () => {
                 <MessageSquare className="w-10 h-10" />
               </div>
               <h2 className="text-3xl font-black text-gray-900 mb-4">Select Responders</h2>
-              <p className="text-gray-500 mb-10 font-medium">Choose which synthetic personas will participate in this intelligence session.</p>
+              <p className="text-gray-500 mb-10 font-medium">Choose which agents will participate in this intelligence session.</p>
               <button
                 onClick={() => setIsSelectorOpen(true)}
                 className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-2xl shadow-indigo-100 hover:bg-indigo-700 transition-all uppercase tracking-widest text-sm"
               >
-                Open My Personas
+                Open Deployed Agents
               </button>
             </div>
           </div>
@@ -283,7 +283,7 @@ const ChatPage: React.FC = () => {
                  </div>
                  <div>
                    <h2 className="font-black text-gray-900 text-lg leading-none mb-1">
-                     {selectedPersonas.length > 1 ? `Multi-Persona Intelligence Session` : selectedPersonas[0]?.name}
+                     {selectedPersonas.length > 1 ? `Multi-Agent Intelligence Session` : selectedPersonas[0]?.name}
                    </h2>
                    <div className="flex items-center text-[10px] text-green-500 font-black uppercase tracking-widest">
                      <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
@@ -425,7 +425,7 @@ const ChatPage: React.FC = () => {
           <div className="relative bg-white w-full max-w-3xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
             <div className="p-10 border-b border-gray-100 flex items-center justify-between">
               <div>
-                <h3 className="text-3xl font-black text-gray-900 mb-2">My Personas</h3>
+                <h3 className="text-3xl font-black text-gray-900 mb-2">Deployed Agents</h3>
                 <p className="text-sm text-gray-500 font-medium">Select up to 5 agents for your synchronous session.</p>
               </div>
               <button onClick={() => setIsSelectorOpen(false)} className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:text-gray-900 transition-all">
@@ -458,7 +458,7 @@ const ChatPage: React.FC = () => {
               }) : (
                 <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-gray-200">
                    <Users className="w-12 h-12 text-gray-200 mx-auto mb-6" />
-                   <p className="text-gray-500 font-bold mb-6">You have no personas yet.</p>
+                   <p className="text-gray-500 font-bold mb-6">You have no agents yet.</p>
                    <Link to="/build" className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all">Create Blueprint</Link>
                 </div>
               )}
