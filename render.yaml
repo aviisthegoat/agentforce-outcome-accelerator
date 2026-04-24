@@ -14,7 +14,7 @@ services:
     rootDir: backend
     plan: free  # Change to 'starter' or 'standard' for production
     buildCommand: npm install --include=dev && npm run build
-    startCommand: npm start
+    startCommand: npm run migrate && npm start
     envVars:
       - key: NODE_ENV
         value: production
