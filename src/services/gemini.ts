@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import type { CreateSimulationRequest } from "./simulationTemplateApi.js";
 import { customerSegmentTemplate } from "../../templates/customerSegmentTemplate.js";
 import { parseLastPersuasionPercentFromText } from "../utils/persuasionScore.js";
+import { apiClient } from "./api.js";
 
 const MAX_PART_CHARS = 500000;
 const MAX_SYSTEM_CHARS = 200000;
@@ -133,109 +134,30 @@ function normalizeBusinessProfileResult(rawResult: string | object, keys: string
 
 export const geminiService = {
   generateBasic: async (prompt: string, isJson: boolean = false): Promise<any> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'your-gemini-api-key-here') {
-      throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
-    }
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: truncate(prompt, MAX_PART_CHARS),
-      });
-      const text = response.text || "";
-      return isJson ? extractJson(text) : text;
-    } catch (error: any) {
-      console.error('Gemini API error details:', {
-        message: error?.message,
-        status: error?.status,
-        statusCode: error?.statusCode,
-        code: error?.code,
-        fullError: error
-      });
-      
-      // Check if it's a 404 error
-      if (error?.status === 404 || error?.statusCode === 404 || error?.message?.includes('404') || error?.code === 404) {
-        throw new Error(`Gemini API 404 Error: Model not found. Available models include: gemini-2.5-flash, gemini-2.5-pro\n\nThis could mean:\n1. The model name is incorrect\n2. Your API key doesn't have access to this model\n3. The API endpoint is incorrect\n\nPlease verify your API key at https://aistudio.google.com/apikey\n\nFull error: ${error?.message || JSON.stringify(error)}`);
-      }
-      
-      // Check if it's a quota/rate limit error
-      if (error?.status === 429 || error?.statusCode === 429 || error?.code === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
-        const errorMsg = error?.message || JSON.stringify(error);
-        if (errorMsg.includes('free_tier')) {
-          throw new Error(`Free Tier Quota Exceeded: You've reached the daily limit of 20 requests per day for the Gemini API free tier.\n\nOptions:\n1. Wait until the quota resets (daily limit)\n2. Upgrade to a paid API key for higher limits\n\nCheck your usage: https://aistudio.google.com/app/apikey\n\nFull error: ${errorMsg}`);
-        }
-        throw new Error(`Rate Limit Exceeded: ${errorMsg}\n\nPlease retry after the specified delay.`);
-      }
-      
-      throwIfServiceUnavailable(error, 'Failed to generate content.');
-      throw new Error(`Gemini API error: ${error?.message || 'Failed to generate content. Please check your API key and quota.'}`);
-    }
+    const data = await apiClient.post<{ result: any }>('/ai/generate-basic', { prompt, isJson });
+    return data.result;
   },
 
   /**
    * Generate a realistic full name for a persona (e.g. for a job title or "advisor").
    * Returns a single string "First Last". Uses AI so no fixed default name list.
    */
-  generatePersonaName: async (context: string): Promise<string> => {
-    const prompt = `Generate a plausible, invented full name (first and last name only) for a person who might have this role. Return only valid JSON: {"name": "First Last"}. The value for "name" must be a real-sounding human name (e.g. "Sarah Chen", "Marcus Webb"), never a job title or role (e.g. not "Project Lead", "Marketing Director", or "Advisor"). Context/role: ${context}`;
+  generatePersonaName: async (context: string, excludedNames: string[] = []): Promise<string> => {
     try {
-      const parsed = await geminiService.generateBasic(prompt, true);
-      const name = typeof parsed?.name === 'string' ? parsed.name.trim() : '';
-      if (name.length > 0) return name;
+      const data = await apiClient.post<{ result: string }>('/ai/generate-persona-name', { context, excludedNames });
+      return data.result || 'Persona';
     } catch (e) {
       console.warn('generatePersonaName failed, using generic fallback', e);
+      return 'Persona';
     }
-    return 'Persona';
   },
 
   /**
    * Specifically for extracting raw facts from messy source data like LinkedIn text.
    */
   extractFacts: async (sourceData: string): Promise<string> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'your-gemini-api-key-here') {
-      throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
-    }
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-    const prompt = `
-      TASK: Extract every specific professional fact from the following text.
-      SOURCE: ${truncate(sourceData, 50000)}
-      
-      EXTRACT THE FOLLOWING:
-      - Full Name and Current Title
-      - Exact companies and years worked
-      - Specific projects or achievements mentioned
-      - Key skills and technologies
-      - Educational background
-      - Tone of voice used in their 'About' or posts
-      
-      RULES:
-      - If the source is just a URL, state "NO TEXT DATA PROVIDED - ONLY A LINK".
-      - Only list facts present in the text.
-      - Do not hallucinate details.
-    `;
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-      });
-      return response.text || "No facts extracted.";
-    } catch (error: any) {
-      console.error('Gemini API error:', error);
-      
-      // Check if it's a quota/rate limit error
-      if (error?.status === 429 || error?.statusCode === 429 || error?.code === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
-        const errorMsg = error?.message || JSON.stringify(error);
-        if (errorMsg.includes('free_tier')) {
-          throw new Error(`Free Tier Quota Exceeded: You've reached the daily limit of 20 requests per day.\n\nOptions:\n1. Wait until the quota resets (daily limit)\n2. Upgrade to a paid API key\n\nCheck usage: https://aistudio.google.com/app/apikey`);
-        }
-        throw new Error(`Rate Limit Exceeded: ${errorMsg}`);
-      }
-      
-      throwIfServiceUnavailable(error, 'Failed to extract facts.');
-      throw new Error(`Gemini API error: ${error?.message || 'Failed to extract facts. Please check your API key and quota.'}`);
-    }
+    const data = await apiClient.post<{ result: string }>('/ai/extract-facts', { sourceData });
+    return data.result || 'No facts extracted.';
   },
 
   generateAvatar: async (name: string, title: string): Promise<string> => {
@@ -270,64 +192,13 @@ export const geminiService = {
   },
 
   generateChain: async (templateContent: string, inputs: Record<string, string>, useExtendedThinking: boolean = false, temperature?: number): Promise<string> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'your-gemini-api-key-here') {
-      throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
-    }
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-    // Always use gemini-2.5-flash since gemini-2.5-pro is not available on free tier
-    const model = 'gemini-2.5-flash';
-    
-    let contextString = "";
-    for (const [key, value] of Object.entries(inputs)) {
-      contextString += `### SOURCE DATA [${key}]:\n${truncate(value, 100000)}\n\n`;
-    }
-
-    const prompt = `
-      ROLE: High-Fidelity Persona Architect.
-      
-      STRICT REQUIREMENT: You are creating a persona based ON THE PROVIDED SOURCE DATA ONLY. 
-      If a LinkedIn profile text is provided, you must capture the specific career path, 
-      actual companies, and unique personality traits found in that text.
-      
-      DO NOT USE GENERIC ADVICE OR "PLACEHOLDER" CORPORATE SPEAK.
-      
-      TEMPLATE TO FILL:
-      ${templateContent}
-      
-      RAW SOURCE DATA (THE ONLY SOURCE OF TRUTH):
-      ${contextString}
-      
-      INSTRUCTIONS:
-      1. Map the specific professional history from the SOURCE DATA into the template.
-      2. If a fact is missing from the source, leave the template field minimal rather than inventing details.
-      3. Capture the 'Voice' of the individual as evidenced by their writing style in the source.
-      4. Output the full Markdown document.
-    `;
-
-      const response = await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-        ...(temperature !== undefined && temperature !== null ? { config: { temperature } } : {}),
-      });
-
-      return response.text || "";
-    } catch (error: any) {
-      console.error('Gemini API error:', error);
-      
-      // Check if it's a quota/rate limit error
-      if (error?.status === 429 || error?.statusCode === 429 || error?.code === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
-        const errorMsg = error?.message || JSON.stringify(error);
-        if (errorMsg.includes('free_tier')) {
-          throw new Error(`Free Tier Quota Exceeded: You've reached the daily limit of 20 requests per day for the Gemini API free tier.\n\nOptions:\n1. Wait until the quota resets (daily limit)\n2. Upgrade to a paid API key for higher limits\n3. Reduce the number of personas being generated\n\nCheck your usage: https://aistudio.google.com/app/apikey\n\nFull error: ${errorMsg}`);
-        }
-        throw new Error(`Rate Limit Exceeded: ${errorMsg}\n\nPlease retry after the specified delay.`);
-      }
-      
-      throwIfServiceUnavailable(error, 'Failed to generate chain.');
-      throw new Error(`Gemini API error: ${error?.message || 'Failed to generate chain. Please check your API key and quota.'}`);
-    }
+    const data = await apiClient.post<{ result: string }>('/ai/generate-chain', {
+      templateContent,
+      inputs,
+      useExtendedThinking,
+      temperature,
+    });
+    return data.result || '';
   },
 
   /**
@@ -335,74 +206,8 @@ export const geminiService = {
    * Uses retry with exponential backoff on 503/502/504 for resilience.
    */
   runSimulation: async (prompt: string, imageData?: string, mimeType?: string): Promise<string> => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
-    if (!apiKey || apiKey === 'your-gemini-api-key-here') {
-      throw new Error('Gemini API key is not configured. Please set VITE_GEMINI_API_KEY in your .env file.');
-    }
-    return withRetry(async () => {
-    try {
-      const ai = new GoogleGenAI({ apiKey });
-    const parts: any[] = [{ text: prompt }];
-
-    if (imageData && mimeType) {
-      // imageData should already be pure base64 (without data URL prefix)
-      // But handle both cases: if it has a comma (data URL), extract base64; otherwise use as-is
-      let base64Data: string;
-      if (imageData.includes(',')) {
-        base64Data = imageData.split(',')[1];
-      } else {
-        base64Data = imageData;
-      }
-      
-      // Validate base64 data is not empty
-      if (!base64Data || base64Data.trim().length === 0) {
-        throw new Error('Invalid file data: base64 content is empty. Please ensure the file is valid and not corrupted.');
-      }
-      
-      // Validate base64 format (basic check)
-      if (!/^[A-Za-z0-9+/=]+$/.test(base64Data.replace(/\s/g, ''))) {
-        throw new Error('Invalid file data: base64 format appears to be invalid. Please try uploading the file again.');
-      }
-      
-      parts.push({
-        inlineData: {
-          data: base64Data,
-          mimeType: mimeType
-        }
-      });
-    }
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: { parts }
-      });
-
-      return response.text || "";
-    } catch (error: any) {
-      console.error('Gemini API error:', error);
-      
-      // Check for document/file errors (e.g. empty, invalid, unsupported type)
-      if (error?.status === 400 || error?.code === 400 || error?.message?.includes('400')) {
-        const errorMsg = error?.message || JSON.stringify(error);
-        if (errorMsg.includes('no pages') || errorMsg.includes('invalid') || errorMsg.includes('empty') || errorMsg.includes('Unsupported') || errorMsg.includes('MIME')) {
-          throw new Error(`File Error: The document or file appears to be empty, corrupted, invalid, or an unsupported type.\n\nPlease ensure:\n1. The file is not corrupted\n2. The file type is supported (e.g. PDF, images, text)\n3. The file is not password-protected\n4. The file size is reasonable (under 20MB)\n\nOriginal error: ${errorMsg}`);
-        }
-        throw new Error(`Invalid Request: ${errorMsg}`);
-      }
-      
-      // Check if it's a quota/rate limit error
-      if (error?.status === 429 || error?.statusCode === 429 || error?.code === 429 || error?.message?.includes('429') || error?.message?.includes('quota')) {
-        const errorMsg = error?.message || JSON.stringify(error);
-        if (errorMsg.includes('free_tier')) {
-          throw new Error(`Free Tier Quota Exceeded: Daily limit of 20 requests reached.\n\nOptions:\n1. Wait until quota resets\n2. Upgrade to paid API key\n\nCheck usage: https://aistudio.google.com/app/apikey`);
-        }
-        throw new Error(`Rate Limit Exceeded: ${errorMsg}`);
-      }
-      
-      throwIfServiceUnavailable(error, 'Failed to run simulation.');
-      throw new Error(`Gemini API error: ${error?.message || 'Failed to run simulation. Please check your API key and quota.'}`);
-    }
-    });
+    const data = await apiClient.post<{ result: string }>('/ai/run-simulation', { prompt, imageData, mimeType });
+    return data.result || '';
   },
 
   /**

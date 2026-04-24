@@ -133,6 +133,7 @@ export function buildSystemPromptFromConfig(data: CreateSimulationRequest): stri
     '- {{SELECTED_PROFILE}} - Name of the selected persona (defines **who** is responding)',
     '- {{SELECTED_PROFILE_FULL}} - Full profile and blueprint of the persona',
     '- {{BACKGROUND_INFO}} - Background context from the **person running the simulation** (the user), not the persona',
+    '- Coach context pack variables (when provided): {{OPPORTUNITY_NAME}}, {{OPPORTUNITY_STAGE}}, {{KEY_STAKEHOLDERS}}, {{TOP_OBJECTIONS}}, {{KEY_RISKS}}, {{DESIRED_OUTCOME}}, {{MEETING_TYPE}}, {{TRANSCRIPT_SUMMARY}}, {{SALES_METHOD}}',
     '',
     '**Inputs vs persona:** Only {{SELECTED_PROFILE}} and {{SELECTED_PROFILE_FULL}} define the persona (the synthetic character). All other variables above and in "User input variables" below are **input from the person running the simulation** (the user/client)—e.g. their business background, context, opening line—not the persona\'s. The persona responds using their profile and the user\'s inputs.',
     '',

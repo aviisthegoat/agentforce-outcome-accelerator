@@ -9,6 +9,9 @@
   },
   "scripts": {
     "dev": "node node_modules/vite/bin/vite.js",
+    "dev:frontend": "node node_modules/vite/bin/vite.js --host 0.0.0.0",
+    "dev:backend": "npm --prefix backend run dev",
+    "interview:demo": "npm run dev:backend & npm run dev:frontend",
     "build": "node node_modules/vite/bin/vite.js build",
     "preview": "node node_modules/vite/bin/vite.js preview",
     "start": "serve -s dist -l ${PORT:-3000}"

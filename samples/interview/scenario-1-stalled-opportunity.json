@@ -1,0 +1,27 @@
+{
+  "scenario_id": "stalled-opportunity-rescue",
+  "title": "Stalled enterprise opportunity rescue",
+  "coach_context": {
+    "opportunity_name": "ACME Global Expansion Platform",
+    "opportunity_stage": "Proposal/Price Quote",
+    "deal_value": "$480,000 ARR",
+    "close_date": "2026-06-30",
+    "key_stakeholders": "VP Sales Ops, CFO, Procurement Lead",
+    "champion_status": "Warm but blocked by finance",
+    "top_objections": "Price, implementation timeline",
+    "key_risks": "No confirmed executive sponsor",
+    "desired_outcome": "Secure exec alignment call this week",
+    "meeting_type": "Re-engagement call",
+    "transcript_summary": "Customer likes capabilities but fears migration burden and budget overruns",
+    "sales_method": "MEDDICC"
+  },
+  "user_message": "Coach me for the call and give me a concrete talk track to unblock finance.",
+  "expected_output_shape": {
+    "diagnosis": "string",
+    "top_issues": ["string", "string", "string"],
+    "recommended_talk_track": "string",
+    "next_question": "string",
+    "risk_flags": ["string"],
+    "confidence": 0
+  }
+}

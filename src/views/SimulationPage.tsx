@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   ChevronRight, 
   ChevronDown,
@@ -41,6 +42,7 @@ import { getSimulationIcon } from '../utils/simulationIcons.js';
 import { useAuth } from '../context/AuthContext.js';
 import { getRunnerDisplayName, getStablePersonaFallbackName, getPersonaDisplayName } from '../utils/humanNames.js';
 import { coerceSinglePersuasionScore, parseLastPersuasionPercentFromText } from '../utils/persuasionScore.js';
+import { interviewSamples } from '../data/interviewSamples.js';
 
 const MAX_PERSONA_TURNS = 20;
 
@@ -269,6 +271,7 @@ const FormattedSimulationResponse: React.FC<{ content: string; isUser?: boolean 
 };
 
 const SimulationPage: React.FC = () => {
+  const location = useLocation();
   const [stage, setStage] = useState<'selection' | 'inputs' | 'result'>('selection');
   const [selectedSimulation, setSelectedSimulation] = useState<SimulationTemplate | null>(null);
   const [simulations, setSimulations] = useState<SimulationTemplate[]>([]);
@@ -328,6 +331,7 @@ const SimulationPage: React.FC = () => {
 
   const [pipelineEvents, setPipelineEvents] = useState<AgentPipelineEvent[]>([]);
   const [pipelineActive, setPipelineActive] = useState(false);
+  const [selectedInterviewSampleId, setSelectedInterviewSampleId] = useState<string>('');
 
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
     try {
@@ -880,6 +884,10 @@ const SimulationPage: React.FC = () => {
               simulationInstructions: conversationBaseInstructions
                 .replace(/{{SELECTED_PROFILE}}/g, currentSpeaker.name)
                 .replace(/{{SELECTED_PROFILE_FULL}}/g, `[Your profile for ${currentSpeaker.name} — retrieved automatically from knowledge base]`),
+              coachContext: {
+                background_info: fieldMap.bgInfo || bgInfo || null,
+                opening_line: openingLineText || null,
+              },
               previousThinking: lastThinkingByPersona.get(currentSpeaker.id),
             }, (ev) => {
               turnCollected.push(ev);
@@ -1073,6 +1081,19 @@ const SimulationPage: React.FC = () => {
             userMessage:
               userInputsString || fieldMap.bgInfo || bgInfo || 'Please respond based on the simulation instructions.',
             simulationInstructions: instructions,
+            coachContext: {
+              opportunity_name: fieldMap.opportunityName || null,
+              opportunity_stage: fieldMap.opportunityStage || null,
+              key_stakeholders: fieldMap.keyStakeholders || null,
+              top_objections: fieldMap.topObjections || null,
+              key_risks: fieldMap.keyRisks || null,
+              desired_outcome: fieldMap.desiredOutcome || null,
+              meeting_type: fieldMap.meetingType || null,
+              transcript_summary: fieldMap.transcriptSummary || null,
+              sales_method: fieldMap.salesMethod || null,
+              background_info: fieldMap.bgInfo || bgInfo || null,
+              opening_line: userInputsString || null,
+            },
             image: effectiveStimulusImage || undefined,
             mimeType: effectiveMimeType || undefined,
           },
@@ -1223,6 +1244,62 @@ const SimulationPage: React.FC = () => {
     }
   };
 
+  const loadInterviewSample = (sampleId: string) => {
+    const sample = interviewSamples.find((s) => s.id === sampleId);
+    if (!sample) return;
+    setSelectedInterviewSampleId(sampleId);
+    setOpeningLine(sample.userMessage);
+    const nextInputs = { ...inputFields };
+    const fieldAliases: Record<string, string[]> = {
+      bgInfo: ['transcript_summary'],
+      opportunityStage: ['opportunity_stage'],
+      opportunityName: ['opportunity_name'],
+      keyStakeholders: ['key_stakeholders'],
+      topObjections: ['top_objections'],
+      keyRisks: ['key_risks'],
+      desiredOutcome: ['desired_outcome'],
+      meetingType: ['meeting_type'],
+      transcriptSummary: ['transcript_summary'],
+      salesMethod: ['sales_method'],
+    };
+    for (const field of selectedSimulation?.required_input_fields ?? []) {
+      const aliases = fieldAliases[field.name] || [field.name];
+      const value = aliases.map((k) => sample.coachContext[k]).find(Boolean);
+      if (value) nextInputs[field.name] = value;
+    }
+    if (!nextInputs.bgInfo && sample.coachContext.transcript_summary) {
+      nextInputs.bgInfo = sample.coachContext.transcript_summary;
+    }
+    setBgInfo(nextInputs.bgInfo || bgInfo);
+    setInputFields(nextInputs);
+    setChatInput(sample.userMessage);
+  };
+
+  function extractTalkTrack(content: string): string {
+    const match = content.match(/Recommended talk track:\s*([\s\S]*?)\n\nNext question:/i);
+    if (match && match[1]) return match[1].trim();
+    return content.trim();
+  }
+
+  async function copyTalkTrack(content: string) {
+    const text = extractTalkTrack(content);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (err) {
+      console.warn('Failed to copy talk track:', err);
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const sampleId = params.get('sample');
+    if (!sampleId) return;
+    if (selectedInterviewSampleId === sampleId) return;
+    if (!selectedSimulation) return;
+    if (stage !== 'inputs') return;
+    loadInterviewSample(sampleId);
+  }, [location.search, stage, selectedSimulation, selectedInterviewSampleId]);
+
   const handleSendFollowUp = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!chatInput.trim() || !selectedPersona || isTyping || !currentSessionId) return;
@@ -1261,6 +1338,10 @@ const SimulationPage: React.FC = () => {
           history,
           userMessage: currentInput,
           simulationInstructions: bgInfo ? `Context provided by the person running the simulation: ${bgInfo}` : undefined,
+          coachContext: {
+            background_info: bgInfo || null,
+            opening_line: openingLine || null,
+          },
           previousThinking: lastPersonaThinking,
         },
         (ev) => {
@@ -1726,6 +1807,26 @@ const SimulationPage: React.FC = () => {
                     </div>
                     </>
                   )}
+                </div>
+
+                <div className="p-4 rounded-2xl border border-indigo-100 bg-indigo-50/60 mb-6">
+                  <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-2">Interview sample launcher</label>
+                  <div className="flex flex-wrap gap-2">
+                    {interviewSamples.map((sample) => (
+                      <button
+                        key={sample.id}
+                        type="button"
+                        onClick={() => loadInterviewSample(sample.id)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition ${
+                          selectedInterviewSampleId === sample.id
+                            ? 'bg-indigo-600 text-white border-indigo-600'
+                            : 'bg-white text-indigo-700 border-indigo-200 hover:border-indigo-400'
+                        }`}
+                      >
+                        {sample.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Generated survey: show questions list (after personas selected) then answer inputs; else render runner input fields */}
@@ -2358,6 +2459,15 @@ const SimulationPage: React.FC = () => {
                         )}
                         <div className={`p-6 rounded-3xl shadow-sm text-xl relative ${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : isModerator ? 'bg-amber-50 border border-amber-200 text-gray-800 rounded-tl-none' : 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'}`}>
                           <FormattedSimulationResponse content={m.content} isUser={isUser} />
+                          {isAgentPersona && (
+                            <button
+                              onClick={() => copyTalkTrack(m.content)}
+                              className="absolute top-2 right-10 px-2 py-1 text-[10px] font-bold rounded-md border border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                              title="Copy recommended talk track"
+                            >
+                              Copy Talk Track
+                            </button>
+                          )}
                           {!isPersonaConversation && (
                           <button
                             onClick={() => handleDeleteMessage(m.id)}
@@ -2485,6 +2595,14 @@ const SimulationPage: React.FC = () => {
               {!isReport && !isSurvey && !isResponseSim && !isIdeaGeneration && (
                 <div className="bg-white border border-gray-100 rounded-2xl p-8 shadow-sm text-gray-800">
                   <FormattedSimulationResponse content={firstPersonaContent} isUser={false} />
+                  <div className="mt-4">
+                    <button
+                      onClick={() => copyTalkTrack(firstPersonaContent)}
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg border border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                    >
+                      Copy Talk Track
+                    </button>
+                  </div>
                 </div>
               )}
               {isTyping && (

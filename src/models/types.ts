@@ -111,6 +111,21 @@ export interface BusinessProfile {
   updated_at?: string;
 }
 
+export interface CoachContext {
+  opportunity_name?: string | null;
+  opportunity_stage?: string | null;
+  deal_value?: string | null;
+  close_date?: string | null;
+  key_stakeholders?: string | null;
+  champion_status?: string | null;
+  top_objections?: string | null;
+  key_risks?: string | null;
+  desired_outcome?: string | null;
+  meeting_type?: string | null;
+  transcript_summary?: string | null;
+  sales_method?: string | null;
+}
+
 export type SimulationMode = 
   | 'web_page' 
   | 'marketing' 
@@ -137,6 +152,8 @@ export interface SimulationSession {
   name: string;
   systemPrompt?: string | null;
   system_prompt?: string | null;
+  coachContext?: CoachContext | null;
+  coach_context?: CoachContext | null;
   createdAt?: string;
   created_at?: string;
   updatedAt?: string;

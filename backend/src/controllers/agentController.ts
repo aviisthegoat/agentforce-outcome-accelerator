@@ -6,7 +6,7 @@ import pool from '../config/database.js';
 
 export async function turn(req: AuthRequest, res: Response, next: NextFunction) {
   try {
-    const { personaId, personaIds, sessionId, history, userMessage, simulationInstructions, previousThinking, image, mimeType } = req.body;
+    const { personaId, personaIds, sessionId, history, userMessage, simulationInstructions, coachContext, previousThinking, image, mimeType } = req.body;
 
     if (!personaId || !userMessage) {
       return res.status(400).json({ error: 'personaId and userMessage are required' });
@@ -20,6 +20,7 @@ export async function turn(req: AuthRequest, res: Response, next: NextFunction) 
       history: Array.isArray(history) ? history : [],
       userMessage,
       simulationInstructions: simulationInstructions || undefined,
+      coachContext: coachContext || undefined,
       previousThinking: previousThinking || undefined,
       image: image || undefined,
       mimeType: mimeType || undefined,

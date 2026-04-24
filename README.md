@@ -1,3 +1,10 @@
+## Interview Demo Quickstart
+
+- Run `npm run interview:demo` to start frontend + backend.
+- Use ready-made scenarios in `samples/interview/`.
+- Follow `docs/interview-demo-runbook.md` for a timed interview walkthrough.
+- Use `docs/interview-playbooks.md` for scenario framing and talk track.
+
 # Agentforce Outcome Accelerator
 
 A full-stack diagnostic and tracking application designed for Applied AI Coaches to build, measure, and optimize Agentforce-like synthetic personas. The app allows coaches to track AI outcomes against business cases, run four-week sprints (simulations) to resolve performance issues, and demonstrate tangible value over time.

@@ -1,0 +1,27 @@
+{
+  "scenario_id": "discovery-call-qualification",
+  "title": "Discovery call with weak qualification",
+  "coach_context": {
+    "opportunity_name": "HelioTech Sales Automation",
+    "opportunity_stage": "Discovery",
+    "deal_value": "$150,000 ARR target",
+    "close_date": "2026-08-15",
+    "key_stakeholders": "RevOps Director, IT Architect",
+    "champion_status": "Unknown",
+    "top_objections": "Need to evaluate more vendors first",
+    "key_risks": "No quantified pain, no decision process mapped",
+    "desired_outcome": "Leave call with clear pain, owner, timeline",
+    "meeting_type": "Initial discovery",
+    "transcript_summary": "Prospect is interested but answers are vague and broad",
+    "sales_method": "BANT"
+  },
+  "user_message": "What should I ask next to qualify this properly?",
+  "expected_output_shape": {
+    "diagnosis": "string",
+    "top_issues": ["string", "string", "string"],
+    "recommended_talk_track": "string",
+    "next_question": "string",
+    "risk_flags": ["string"],
+    "confidence": 0
+  }
+}

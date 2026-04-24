@@ -1,0 +1,27 @@
+{
+  "scenario_id": "pricing-objection-procurement",
+  "title": "Pricing and procurement objection handling",
+  "coach_context": {
+    "opportunity_name": "NorthBridge Service Cloud Rollout",
+    "opportunity_stage": "Negotiation/Review",
+    "deal_value": "$220,000 ARR",
+    "close_date": "2026-05-20",
+    "key_stakeholders": "Head of Support, Procurement Manager",
+    "champion_status": "Strong champion in support team",
+    "top_objections": "Competitor discount, legal redlines",
+    "key_risks": "Procurement demands 30 percent reduction",
+    "desired_outcome": "Protect value and keep discount under 12 percent",
+    "meeting_type": "Commercial negotiation",
+    "transcript_summary": "Champion says support ROI is clear but procurement sees software as interchangeable",
+    "sales_method": "Challenger"
+  },
+  "user_message": "How do I defend value without sounding rigid?",
+  "expected_output_shape": {
+    "diagnosis": "string",
+    "top_issues": ["string", "string", "string"],
+    "recommended_talk_track": "string",
+    "next_question": "string",
+    "risk_flags": ["string"],
+    "confidence": 0
+  }
+}

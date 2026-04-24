@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Quote
 } from 'lucide-react';
+import { interviewSamples } from '../data/interviewSamples.js';
 
 const HomePage: React.FC = () => {
   return (
@@ -39,6 +40,28 @@ const HomePage: React.FC = () => {
             <Plus className="mr-2 w-6 h-6" />
             Build your first persona
           </Link>
+          <Link
+            to="/simulate"
+            className="inline-flex items-center px-10 py-5 border border-indigo-200 text-lg font-black rounded-2xl text-indigo-700 bg-white hover:bg-indigo-50 transition-all"
+          >
+            <Zap className="mr-2 w-6 h-6" />
+            Open Interview Scenarios
+          </Link>
+        </div>
+      </div>
+
+      <div className="mb-12 bg-indigo-50 border border-indigo-100 rounded-3xl p-6">
+        <h2 className="text-sm font-black uppercase tracking-widest text-indigo-700 mb-3">Interview Scenario Shortcuts</h2>
+        <div className="flex flex-wrap gap-3">
+          {interviewSamples.map((sample) => (
+            <Link
+              key={sample.id}
+              to={`/simulate?sample=${sample.id}`}
+              className="px-4 py-2 rounded-xl text-sm font-bold border border-indigo-200 bg-white text-indigo-700 hover:border-indigo-400"
+            >
+              {sample.label}
+            </Link>
+          ))}
         </div>
       </div>
 

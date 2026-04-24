@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import pool from '../config/database.js';
-import { loadFullKnowledgeDocuments, RetrievedChunk } from './embeddingService.js';
+import { loadFullKnowledgeDocuments, RetrievedChunk, retrieve } from './embeddingService.js';
 
 const CHAT_MODEL = 'gemini-2.5-flash';
 const MAX_HISTORY_CHARS = 40000;
@@ -9,11 +9,18 @@ const MAX_SYSTEM_CHARS = 200000;
 const MAX_QUALITY_ROUNDS = 3;
 const ALIGNMENT_PASS_THRESHOLD = 70;
 const COMPLETENESS_PASS_THRESHOLD = 70;
+const CONTEXT_FIDELITY_PASS_THRESHOLD = 65;
+const ACTIONABILITY_PASS_THRESHOLD = 65;
+const SAFETY_COMPLIANCE_PASS_THRESHOLD = 75;
+const RETRIEVAL_TOP_K = 10;
 
 function passesQualityGate(v: ValidationInfo): boolean {
   return (
     v.alignment_score >= ALIGNMENT_PASS_THRESHOLD &&
-    v.completeness_score >= COMPLETENESS_PASS_THRESHOLD
+    v.completeness_score >= COMPLETENESS_PASS_THRESHOLD &&
+    (v.context_fidelity_score ?? 0) >= CONTEXT_FIDELITY_PASS_THRESHOLD &&
+    (v.actionability_score ?? 0) >= ACTIONABILITY_PASS_THRESHOLD &&
+    (v.safety_compliance_score ?? 0) >= SAFETY_COMPLIANCE_PASS_THRESHOLD
   );
 }
 
@@ -38,6 +45,7 @@ export interface AgentTurnParams {
   history: { role: 'user' | 'model'; text: string }[];
   userMessage: string;
   simulationInstructions?: string;
+  coachContext?: Record<string, string | null | undefined>;
   previousThinking?: string;
   image?: string;
   mimeType?: string;
@@ -52,10 +60,25 @@ export interface RetrievalInfo {
 export interface ValidationInfo {
   alignment_score: number;
   completeness_score: number;
+  context_fidelity_score?: number;
+  actionability_score?: number;
+  sales_method_alignment_score?: number;
+  safety_compliance_score?: number;
   flags: string[];
   suggestions: string[];
   completeness_flags: string[];
   completeness_suggestions: string[];
+  rubric_flags?: string[];
+  rubric_suggestions?: string[];
+}
+
+export interface CoachOutput {
+  diagnosis: string;
+  top_issues: string[];
+  recommended_talk_track: string;
+  next_question: string;
+  risk_flags: string[];
+  confidence: number;
 }
 
 export interface AgentTurnResult {
@@ -63,6 +86,7 @@ export interface AgentTurnResult {
   thinking: string;
   retrieval: RetrievalInfo;
   validation: ValidationInfo | null;
+  coach_output?: CoachOutput | null;
 }
 
 async function getPersonaIdentity(personaId: string): Promise<{ name: string; description: string }> {
@@ -174,6 +198,14 @@ function buildRetrievedContextSection(chunks: RetrievedChunk[]): string {
   );
 }
 
+function serializeCoachContext(context?: Record<string, string | null | undefined>): string {
+  if (!context) return '';
+  const rows = Object.entries(context)
+    .filter(([, value]) => value != null && String(value).trim())
+    .map(([key, value]) => `- ${key}: ${String(value).trim()}`);
+  return rows.length ? rows.join('\n') : '';
+}
+
 async function respondStep(
   ai: GoogleGenAI,
   persona: { name: string; description: string },
@@ -182,6 +214,7 @@ async function respondStep(
   thinking: string,
   retrievedContext: string,
   simulationInstructions?: string,
+  coachContext?: Record<string, string | null | undefined>,
   image?: string,
   mimeType?: string,
   revisionOf?: { draft: string; validation: ValidationInfo }
@@ -216,6 +249,25 @@ ${truncate(draft, 4000)}`;
     systemPrompt += `\n\n${retrievedContext}`;
   }
 
+  const coachContextText = serializeCoachContext(coachContext);
+  if (coachContextText) {
+    systemPrompt += `\n\n### Coach context pack\nUse this deal context as hard grounding for your answer:\n${coachContextText}`;
+  }
+
+  systemPrompt += `
+
+### Required output contract
+Return valid JSON only:
+{
+  "diagnosis": "short situation diagnosis",
+  "top_issues": ["issue 1", "issue 2", "issue 3"],
+  "recommended_talk_track": "what the user should say next",
+  "next_question": "single best follow-up question",
+  "risk_flags": ["risk 1", "risk 2"],
+  "confidence": 0-100
+}
+`;
+
   systemPrompt = truncate(systemPrompt, MAX_SYSTEM_CHARS);
 
   const userParts: any[] = [{ text: truncate(userMessage, 20000) }];
@@ -239,10 +291,45 @@ ${truncate(draft, 4000)}`;
     contents,
     config: {
       systemInstruction: systemPrompt,
+      responseMimeType: 'application/json',
     },
   });
 
-  return response.text || '';
+  return response.text || '{}';
+}
+
+function parseCoachOutput(text: string): CoachOutput | null {
+  try {
+    const parsed = JSON.parse(text || '{}');
+    return {
+      diagnosis: typeof parsed.diagnosis === 'string' ? parsed.diagnosis : '',
+      top_issues: Array.isArray(parsed.top_issues) ? parsed.top_issues.filter((v: unknown) => typeof v === 'string') : [],
+      recommended_talk_track: typeof parsed.recommended_talk_track === 'string' ? parsed.recommended_talk_track : '',
+      next_question: typeof parsed.next_question === 'string' ? parsed.next_question : '',
+      risk_flags: Array.isArray(parsed.risk_flags) ? parsed.risk_flags.filter((v: unknown) => typeof v === 'string') : [],
+      confidence: typeof parsed.confidence === 'number' ? Math.min(100, Math.max(0, Math.round(parsed.confidence))) : 50,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function buildFallbackCoachOutput(userMessage: string, simulationInstructions?: string): CoachOutput {
+  const instructionHint = simulationInstructions
+    ? `Use the simulation constraints: ${truncate(simulationInstructions, 240)}`
+    : 'Use available deal context and ask one clarifying question.';
+  return {
+    diagnosis: 'The model returned an unstructured response, so a deterministic coaching fallback was used.',
+    top_issues: [
+      'Response format contract was not satisfied',
+      'Action plan needs explicit next-step guidance',
+      'Context grounding should be revalidated on next turn',
+    ],
+    recommended_talk_track: `Based on your request "${truncate(userMessage, 180)}", restate the business goal, confirm stakeholder priority, and propose one concrete next meeting outcome. ${instructionHint}`,
+    next_question: 'Which stakeholder can confirm decision criteria and timeline in this cycle?',
+    risk_flags: ['Output format fallback triggered', 'Review for context fidelity before execution'],
+    confidence: 55,
+  };
 }
 
 async function validateStep(
@@ -282,14 +369,27 @@ Judge whether the reply adequately completes the job for the user message. Consi
 - Does it appear cut off, unfinished, or refuse to answer without good in-character reason?
 - For very short user messages, a brief reply may still be complete if it appropriately answers.
 
+### Task 3 — Applied AI coach rubric
+Evaluate:
+- context_fidelity_score: how grounded the response is in provided business/deal/simulation context.
+- actionability_score: whether it provides concrete next actions or talk tracks.
+- sales_method_alignment_score: whether it aligns with explicit sales method/context if present.
+- safety_compliance_score: avoid fabricated claims, risky legal/compliance advice, or manipulative behavior.
+
 Output JSON only:
 {
   "alignment_score": <1-100>,
   "completeness_score": <1-100>,
+  "context_fidelity_score": <1-100>,
+  "actionability_score": <1-100>,
+  "sales_method_alignment_score": <1-100>,
+  "safety_compliance_score": <1-100>,
   "flags": ["<persona alignment mismatch or concern>"],
   "suggestions": ["<actionable persona improvement>"],
   "completeness_flags": ["<specific completeness or answer-quality issue>"],
-  "completeness_suggestions": ["<actionable improvement to fully answer the user>"]
+  "completeness_suggestions": ["<actionable improvement to fully answer the user>"],
+  "rubric_flags": ["<context/actionability/sales/safety issue>"],
+  "rubric_suggestions": ["<actionable rubric fix suggestion>"]
 }`;
 
   const result = await ai.models.generateContent({
@@ -310,6 +410,22 @@ Output JSON only:
         typeof parsed.completeness_score === 'number'
           ? Math.min(100, Math.max(1, Math.round(parsed.completeness_score)))
           : 50,
+      context_fidelity_score:
+        typeof parsed.context_fidelity_score === 'number'
+          ? Math.min(100, Math.max(1, Math.round(parsed.context_fidelity_score)))
+          : 50,
+      actionability_score:
+        typeof parsed.actionability_score === 'number'
+          ? Math.min(100, Math.max(1, Math.round(parsed.actionability_score)))
+          : 50,
+      sales_method_alignment_score:
+        typeof parsed.sales_method_alignment_score === 'number'
+          ? Math.min(100, Math.max(1, Math.round(parsed.sales_method_alignment_score)))
+          : 50,
+      safety_compliance_score:
+        typeof parsed.safety_compliance_score === 'number'
+          ? Math.min(100, Math.max(1, Math.round(parsed.safety_compliance_score)))
+          : 50,
       flags: Array.isArray(parsed.flags) ? parsed.flags.filter((f: unknown) => typeof f === 'string') : [],
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions.filter((s: unknown) => typeof s === 'string') : [],
       completeness_flags: Array.isArray(parsed.completeness_flags)
@@ -317,6 +433,12 @@ Output JSON only:
         : [],
       completeness_suggestions: Array.isArray(parsed.completeness_suggestions)
         ? parsed.completeness_suggestions.filter((s: unknown) => typeof s === 'string')
+        : [],
+      rubric_flags: Array.isArray(parsed.rubric_flags)
+        ? parsed.rubric_flags.filter((f: unknown) => typeof f === 'string')
+        : [],
+      rubric_suggestions: Array.isArray(parsed.rubric_suggestions)
+        ? parsed.rubric_suggestions.filter((s: unknown) => typeof s === 'string')
         : [],
     };
   } catch {
@@ -327,6 +449,12 @@ Output JSON only:
       suggestions: [],
       completeness_flags: [],
       completeness_suggestions: [],
+      context_fidelity_score: 50,
+      actionability_score: 50,
+      sales_method_alignment_score: 50,
+      safety_compliance_score: 50,
+      rubric_flags: [],
+      rubric_suggestions: [],
     };
   }
 }
@@ -350,7 +478,7 @@ export async function runAgentTurnStreaming(
   params: AgentTurnParams,
   emit?: (event: AgentPipelineEvent) => void
 ): Promise<AgentTurnResult> {
-  const { personaId, personaIds, sessionId, userId, history, userMessage, simulationInstructions, previousThinking, image, mimeType } = params;
+  const { personaId, personaIds, sessionId, userId, history, userMessage, simulationInstructions, coachContext, previousThinking, image, mimeType } = params;
   const write = emit || (() => {});
   const ai = getAI();
   const persona = await getPersonaIdentity(personaId);
@@ -365,8 +493,22 @@ export async function runAgentTurnStreaming(
     fullDocuments = [];
   }
 
+  const personaProfileDocs = fullDocuments.filter((d) => d.source_type === 'full_persona_profile');
   const documentQueries = fullDocuments.map((d) => d.source_name);
-  const ragEmpty = fullDocuments.length === 0;
+  let rankedChunks: RetrievedChunk[] = [];
+  try {
+    rankedChunks = await retrieve(
+      `${userMessage}\n${previousThinking || ''}`.trim(),
+      effectivePersonaIds,
+      sessionId,
+      RETRIEVAL_TOP_K,
+      userId
+    );
+  } catch (err: unknown) {
+    console.warn('[Knowledge] targeted retrieval failed, using fallback full docs:', err);
+  }
+  const selectedDocs = [...personaProfileDocs, ...rankedChunks].slice(0, RETRIEVAL_TOP_K + 2);
+  const ragEmpty = selectedDocs.length === 0;
 
   let thinking = '';
   let response = '';
@@ -398,10 +540,10 @@ export async function runAgentTurnStreaming(
     write({ step: 'thinking', status: 'done', thinking, searchQueries: [] });
 
     write({ step: 'retrieval', status: 'active', queries: documentQueries });
-    const retrievedContext = buildRetrievedContextSection(fullDocuments);
+    const retrievedContext = buildRetrievedContextSection(selectedDocs);
     retrievalInfo = {
-      queries: documentQueries,
-      chunks: fullDocuments.map((c) => ({
+      queries: [`targeted:${userMessage.slice(0, 80)}`, ...documentQueries],
+      chunks: selectedDocs.map((c) => ({
         source_type: c.source_type,
         source_name: c.source_name,
         score: c.score,
@@ -423,6 +565,7 @@ export async function runAgentTurnStreaming(
       thinking,
       retrievedContext,
       simulationInstructions,
+      coachContext,
       image,
       mimeType,
       revisionOf
@@ -435,10 +578,16 @@ export async function runAgentTurnStreaming(
       validation = {
         alignment_score: 25,
         completeness_score: 5,
+        context_fidelity_score: 5,
+        actionability_score: 5,
+        sales_method_alignment_score: 5,
+        safety_compliance_score: 25,
         flags: ['Empty or whitespace-only response'],
         suggestions: ['Generate a substantive in-character reply'],
         completeness_flags: ['No answer content was produced'],
         completeness_suggestions: ['Fully respond to the user message in character'],
+        rubric_flags: ['No grounded coaching output was generated'],
+        rubric_suggestions: ['Return complete JSON coaching output with actionable next step'],
       };
     } else {
       try {
@@ -463,6 +612,12 @@ export async function runAgentTurnStreaming(
       suggestions: [],
       completeness_flags: [],
       completeness_suggestions: [],
+      context_fidelity_score: 50,
+      actionability_score: 50,
+      sales_method_alignment_score: 50,
+      safety_compliance_score: 50,
+      rubric_flags: [],
+      rubric_suggestions: [],
     };
     write({ step: 'validation', status: 'done', validation: validationDone });
     validation = validationDone;
@@ -472,7 +627,11 @@ export async function runAgentTurnStreaming(
     }
   }
 
-  const result: AgentTurnResult = { response, thinking, retrieval: retrievalInfo, validation };
+  const coachOutput = parseCoachOutput(response) || buildFallbackCoachOutput(userMessage, simulationInstructions);
+  const finalResponse = coachOutput
+    ? `Diagnosis: ${coachOutput.diagnosis}\n\nTop issues:\n${coachOutput.top_issues.map((issue) => `- ${issue}`).join('\n')}\n\nRecommended talk track:\n${coachOutput.recommended_talk_track}\n\nNext question:\n${coachOutput.next_question}\n\nRisk flags:\n${coachOutput.risk_flags.map((risk) => `- ${risk}`).join('\n')}\n\nConfidence: ${coachOutput.confidence}%`
+    : response;
+  const result: AgentTurnResult = { response: finalResponse, thinking, retrieval: retrievalInfo, validation, coach_output: coachOutput };
   write({ step: 'complete', result });
   return result;
 }

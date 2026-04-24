@@ -7,6 +7,7 @@ export interface AgentTurnRequest {
   history: { role: 'user' | 'model'; text: string }[];
   userMessage: string;
   simulationInstructions?: string;
+  coachContext?: Record<string, string | null | undefined>;
   previousThinking?: string;
   image?: string;
   mimeType?: string;
@@ -21,10 +22,25 @@ export interface RetrievalInfo {
 export interface ValidationInfo {
   alignment_score: number;
   completeness_score: number;
+  context_fidelity_score?: number;
+  actionability_score?: number;
+  sales_method_alignment_score?: number;
+  safety_compliance_score?: number;
   flags: string[];
   suggestions: string[];
   completeness_flags: string[];
   completeness_suggestions: string[];
+  rubric_flags?: string[];
+  rubric_suggestions?: string[];
+}
+
+export interface CoachOutput {
+  diagnosis: string;
+  top_issues: string[];
+  recommended_talk_track: string;
+  next_question: string;
+  risk_flags: string[];
+  confidence: number;
 }
 
 export interface AgentTurnResponse {
@@ -32,6 +48,7 @@ export interface AgentTurnResponse {
   thinking: string;
   retrieval: RetrievalInfo;
   validation: ValidationInfo | null;
+  coach_output?: CoachOutput | null;
 }
 
 export interface AgentPipelineEvent {
