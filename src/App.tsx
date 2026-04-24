@@ -1,20 +1,20 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { User, LayoutDashboard, UserPlus, PlayCircle, Settings, LogOut, Menu, X, Shield, BookOpen, Briefcase } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
-import HomePage from './views/HomePage.js';
-import BuildPersonaPage from './views/BuildPersonaPage.js';
-import ChatPage from './views/ChatPage.js';
-import SimulationPage from './views/SimulationPage.js';
-import GalleryPage from './views/GalleryPage.js';
-import PersonaLibraryPage from './views/PersonaLibraryPage.js';
-import LoginPage from './views/LoginPage.js';
-import SettingsPage from './views/SettingsPage.js';
-import BusinessProfilePage from './views/BusinessProfilePage.js';
-import AdminPage from './views/AdminPage.js';
-import SyntheticUserDetail from './views/info/SyntheticUserDetail.js';
-import AdvisorDetail from './views/info/AdvisorDetail.js';
 import { ApiErrorBanner } from './components/ApiErrorBanner.js';
+
+const HomePage = React.lazy(() => import('./views/HomePage.js'));
+const BuildPersonaPage = React.lazy(() => import('./views/BuildPersonaPage.js'));
+const ChatPage = React.lazy(() => import('./views/ChatPage.js'));
+const SimulationPage = React.lazy(() => import('./views/SimulationPage.js'));
+const GalleryPage = React.lazy(() => import('./views/GalleryPage.js'));
+const PersonaLibraryPage = React.lazy(() => import('./views/PersonaLibraryPage.js'));
+const SettingsPage = React.lazy(() => import('./views/SettingsPage.js'));
+const BusinessProfilePage = React.lazy(() => import('./views/BusinessProfilePage.js'));
+const AdminPage = React.lazy(() => import('./views/AdminPage.js'));
+const SyntheticUserDetail = React.lazy(() => import('./views/info/SyntheticUserDetail.js'));
+const AdvisorDetail = React.lazy(() => import('./views/info/AdvisorDetail.js'));
 
 const Sidebar: React.FC = () => {
   const location = useLocation();
@@ -136,21 +136,29 @@ const AppRoutes: React.FC = () => {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/build" element={<BuildPersonaPage />} />
-      <Route path="/chat" element={<ChatPage />} />
-      <Route path="/chat/:id" element={<ChatPage />} />
-      <Route path="/simulate" element={<SimulationPage />} />
-      <Route path="/business-profile" element={<BusinessProfilePage />} />
-      <Route path="/gallery" element={<GalleryPage />} />
-      <Route path="/library" element={<PersonaLibraryPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/admin" element={<AdminPage />} />
-      <Route path="/info/synthetic-user" element={<SyntheticUserDetail />} />
-      <Route path="/info/advisor" element={<AdvisorDetail />} />
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-gray-500">Loading page...</div>
+        </div>
+      }
+    >
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/build" element={<BuildPersonaPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/chat/:id" element={<ChatPage />} />
+        <Route path="/simulate" element={<SimulationPage />} />
+        <Route path="/business-profile" element={<BusinessProfilePage />} />
+        <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/library" element={<PersonaLibraryPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/info/synthetic-user" element={<SyntheticUserDetail />} />
+        <Route path="/info/advisor" element={<AdvisorDetail />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Suspense>
   );
 };
 
