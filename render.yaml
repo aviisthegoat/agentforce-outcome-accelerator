@@ -28,8 +28,10 @@ services:
         sync: false  # REQUIRED: set to your frontend URL, e.g. https://persona-builder-frontend.onrender.com
       - key: GEMINI_API_KEY
         sync: false  # Set this manually with your API key
-    # Link to PostgreSQL database
-    # database: persona-builder-db  # Uncomment and create database first
+      - key: DATABASE_URL
+        fromDatabase:
+          name: persona-builder-db
+          property: connectionString
 
   # Frontend Static Site
   - type: web
