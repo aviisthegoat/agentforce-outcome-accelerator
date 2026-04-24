@@ -7,7 +7,7 @@ import BuildPersonaPage from './pages/BuildPersonaPage';
 import ChatPage from './pages/ChatPage';
 import SimulationPage from './pages/SimulationPage';
 import GalleryPage from './pages/GalleryPage';
-import LoginPage from './pages/LoginPage';
+
 import SettingsPage from './pages/SettingsPage';
 import SyntheticUserDetail from './pages/info/SyntheticUserDetail';
 import AdvisorDetail from './pages/info/AdvisorDetail';
@@ -134,17 +134,16 @@ const App: React.FC = () => {
         <MenuBar user={user} onLogout={handleLogout} />
         <main className="flex-grow flex flex-col">
           <Routes>
-            <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage onLogin={handleLogin} />} />
-            <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
-            <Route path="/build" element={user ? <BuildPersonaPage /> : <Navigate to="/login" />} />
-            <Route path="/chat" element={user ? <ChatPage /> : <Navigate to="/login" />} />
-            <Route path="/chat/:id" element={user ? <ChatPage /> : <Navigate to="/login" />} />
-            <Route path="/simulate" element={user ? <SimulationPage /> : <Navigate to="/login" />} />
-            <Route path="/gallery" element={user ? <GalleryPage /> : <Navigate to="/login" />} />
-            <Route path="/settings" element={user ? <SettingsPage /> : <Navigate to="/login" />} />
+            <Route path="/" element={<HomePage />} />
+            <Route path="/build" element={<BuildPersonaPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat/:id" element={<ChatPage />} />
+            <Route path="/simulate" element={<SimulationPage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
             
-            <Route path="/info/synthetic-user" element={user ? <SyntheticUserDetail /> : <Navigate to="/login" />} />
-            <Route path="/info/advisor" element={user ? <AdvisorDetail /> : <Navigate to="/login" />} />
+            <Route path="/info/synthetic-user" element={<SyntheticUserDetail />} />
+            <Route path="/info/advisor" element={<AdvisorDetail />} />
 
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
