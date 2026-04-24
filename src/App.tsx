@@ -122,45 +122,7 @@ const Sidebar: React.FC = () => {
   );
 };
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading, isAdmin } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/" replace />;
-  }
-
-  return <>{children}</>;
-};
 
 const AppRoutes: React.FC = () => {
   const { user, loading } = useAuth();
@@ -175,103 +137,18 @@ const AppRoutes: React.FC = () => {
 
   return (
     <Routes>
-      <Route path="/login" element={user ? <Navigate to="/" /> : <LoginPage />} />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <HomePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/build"
-        element={
-          <ProtectedRoute>
-            <BuildPersonaPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chat"
-        element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chat/:id"
-        element={
-          <ProtectedRoute>
-            <ChatPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/simulate"
-        element={
-          <ProtectedRoute>
-            <SimulationPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/business-profile"
-        element={
-          <ProtectedRoute>
-            <BusinessProfilePage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/gallery"
-        element={
-          <ProtectedRoute>
-            <GalleryPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/library"
-        element={
-          <ProtectedRoute>
-            <PersonaLibraryPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <SettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminPage />
-          </AdminRoute>
-        }
-      />
-      <Route
-        path="/info/synthetic-user"
-        element={
-          <ProtectedRoute>
-            <SyntheticUserDetail />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/info/advisor"
-        element={
-          <ProtectedRoute>
-            <AdvisorDetail />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/" element={<HomePage />} />
+      <Route path="/build" element={<BuildPersonaPage />} />
+      <Route path="/chat" element={<ChatPage />} />
+      <Route path="/chat/:id" element={<ChatPage />} />
+      <Route path="/simulate" element={<SimulationPage />} />
+      <Route path="/business-profile" element={<BusinessProfilePage />} />
+      <Route path="/gallery" element={<GalleryPage />} />
+      <Route path="/library" element={<PersonaLibraryPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/info/synthetic-user" element={<SyntheticUserDetail />} />
+      <Route path="/info/advisor" element={<AdvisorDetail />} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
