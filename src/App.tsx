@@ -32,14 +32,13 @@ const Sidebar: React.FC = () => {
     ...(isAdmin ? [{ label: 'Admin', path: '/admin', icon: Shield }] : []),
   ];
 
-  if (!user) return null;
-
   return (
     <>
       {/* Mobile menu button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-md bg-white border border-gray-200 shadow-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        className="lg:hidden fixed top-4 left-4 z-[80] p-2 rounded-md bg-white border border-gray-200 shadow-md text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+        aria-label="Open navigation menu"
       >
         <Menu className="w-6 h-6" />
       </button>
@@ -47,14 +46,14 @@ const Sidebar: React.FC = () => {
       {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-[70]"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-40 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-[75] flex flex-col transform transition-transform duration-300 ease-in-out ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -95,19 +94,25 @@ const Sidebar: React.FC = () => {
 
         {/* User section */}
         <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-700 truncate">{user.username}</span>
-          </div>
-          <button
-            onClick={() => {
-              setIsMobileOpen(false);
-              logout();
-            }}
-            className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
-          >
-            <LogOut className="w-5 h-5 mr-2" />
-            Logout
-          </button>
+          {user ? (
+            <>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-gray-700 truncate">{user.username}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setIsMobileOpen(false);
+                  logout();
+                }}
+                className="w-full flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-700 transition-colors"
+              >
+                <LogOut className="w-5 h-5 mr-2" />
+                Logout
+              </button>
+            </>
+          ) : (
+            <div className="text-xs text-gray-500 px-2 py-1">Not logged in</div>
+          )}
         </div>
 
         {/* Close button for mobile */}
@@ -168,7 +173,7 @@ const App: React.FC = () => {
       <Router>
         <div className="min-h-screen flex">
           <Sidebar />
-          <main className="flex-1 lg:ml-64 flex flex-col">
+          <main className="flex-1 lg:ml-64 flex flex-col min-w-0 overflow-x-hidden">
             <AppRoutes />
           </main>
         </div>
