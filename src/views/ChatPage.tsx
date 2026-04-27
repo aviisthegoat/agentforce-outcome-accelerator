@@ -547,7 +547,7 @@ const ChatPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-white">
+    <div className="flex min-h-[calc(100dvh-64px)] bg-white">
       {/* Sidebar - History */}
       <aside className="hidden md:flex w-80 flex-col border-r border-gray-100 bg-gray-50/50">
         <div className="p-6 border-b border-gray-100 bg-white">

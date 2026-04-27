@@ -1579,7 +1579,7 @@ const SimulationPage: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-64px)] overflow-hidden bg-white">
+    <div className="flex min-h-[calc(100dvh-64px)] bg-white">
       {/* Sidebar - History */}
       <aside
         className="hidden md:flex shrink-0 flex-col border-r border-gray-100 bg-gray-50/50"
