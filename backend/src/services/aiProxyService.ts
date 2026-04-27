@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 
 const CHAT_MODEL = 'gemini-2.5-flash';
+const MAX_RETRIES = 3;
 
 function getAI(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -19,19 +20,48 @@ function parseJson(text: string): any {
   try {
     return JSON.parse(text);
   } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error('Invalid JSON from model');
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) return JSON.parse(match[0]);
+    } catch {
+      // fall through
+    }
+    // Be permissive: callers can apply defaults if keys are missing.
+    return {};
   }
+}
+
+function isRetryableGeminiError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('"code":503') || msg.includes('UNAVAILABLE') || msg.includes('high demand');
+}
+
+async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableGeminiError(err) || attempt === MAX_RETRIES) {
+        throw err;
+      }
+      const delayMs = 1000 * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
 }
 
 export async function generateBasic(prompt: string, isJson = false): Promise<any> {
   const ai = getAI();
-  const response = await ai.models.generateContent({
-    model: CHAT_MODEL,
-    contents: truncate(prompt, 500_000),
-    ...(isJson ? { config: { responseMimeType: 'application/json' } } : {}),
-  });
+  const response = await withRetry(() =>
+    ai.models.generateContent({
+      model: CHAT_MODEL,
+      contents: truncate(prompt, 500_000),
+      ...(isJson ? { config: { responseMimeType: 'application/json' } } : {}),
+    })
+  );
   const text = response.text || '';
   return isJson ? parseJson(text) : text;
 }
@@ -46,21 +76,25 @@ export async function generateChain(
     .map(([k, v]) => `### SOURCE [${k}]\n${truncate(v, 100_000)}`)
     .join('\n\n');
   const prompt = `Fill this template using only the source data.\n\nTemplate:\n${templateContent}\n\n${sourceContext}\n\nReturn the completed markdown.`;
-  const response = await ai.models.generateContent({
-    model: CHAT_MODEL,
-    contents: prompt,
-    ...(typeof temperature === 'number' ? { config: { temperature } } : {}),
-  });
+  const response = await withRetry(() =>
+    ai.models.generateContent({
+      model: CHAT_MODEL,
+      contents: prompt,
+      ...(typeof temperature === 'number' ? { config: { temperature } } : {}),
+    })
+  );
   return response.text || '';
 }
 
 export async function extractFacts(sourceData: string): Promise<string> {
   const ai = getAI();
   const prompt = `Extract factual professional details from this text. No guessing.\n\n${truncate(sourceData, 100_000)}`;
-  const response = await ai.models.generateContent({
-    model: CHAT_MODEL,
-    contents: prompt,
-  });
+  const response = await withRetry(() =>
+    ai.models.generateContent({
+      model: CHAT_MODEL,
+      contents: prompt,
+    })
+  );
   return response.text || '';
 }
 
@@ -71,10 +105,12 @@ export async function runSimulation(prompt: string, imageData?: string, mimeType
     const base64Data = imageData.includes(',') ? imageData.split(',')[1] : imageData;
     parts.push({ inlineData: { data: base64Data, mimeType } });
   }
-  const response = await ai.models.generateContent({
-    model: CHAT_MODEL,
-    contents: { parts },
-  });
+  const response = await withRetry(() =>
+    ai.models.generateContent({
+      model: CHAT_MODEL,
+      contents: { parts },
+    })
+  );
   return response.text || '';
 }
 

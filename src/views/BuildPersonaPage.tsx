@@ -201,9 +201,12 @@ const SyntheticUserForm: React.FC<{ onComplete: () => void; defaultVisibility?: 
       const personasRaw = Array.isArray(raw?.personas) ? raw.personas : [];
       const usedNames = new Set<string>();
       const personas: { name: string; title: string }[] = [];
-      for (let index = 0; index < personasRaw.length; index++) {
+      const rawCandidates = personasRaw.length > 0
+        ? personasRaw
+        : Array.from({ length: Math.max(1, formData.q7) }, () => ({ title: 'Synthetic Persona' }));
+      for (let index = 0; index < rawCandidates.length; index++) {
         if (cancelledRef.current) return;
-        const p = personasRaw[index] as { name?: string; title?: string };
+        const p = rawCandidates[index] as { name?: string; title?: string };
         const titleStr = (typeof p?.title === 'string' && p.title.trim()) ? p.title.trim() : 'Synthetic Persona';
         let nameStr = (typeof p?.name === 'string' && p.name.trim()) ? p.name.trim() : '';
         let name = (nameStr && nameStr !== titleStr) ? nameStr : await geminiService.generatePersonaName(titleStr, Array.from(usedNames));
@@ -215,6 +218,9 @@ const SyntheticUserForm: React.FC<{ onComplete: () => void; defaultVisibility?: 
         }
         usedNames.add(name);
         personas.push({ name, title: titleStr });
+      }
+      if (personas.length === 0) {
+        throw new Error('Could not derive personas from AI output. Please retry.');
       }
 
       const createdIds: string[] = [];
@@ -255,8 +261,12 @@ const SyntheticUserForm: React.FC<{ onComplete: () => void; defaultVisibility?: 
           { name: `Agent_Behaviors.md`, content: behaviors, type: 'markdown' as const }
         ];
 
-        for (const file of files) {
-          await personaApi.createFile(persona.id, file);
+        const fileResults = await Promise.allSettled(
+          files.map((file) => personaApi.createFile(persona.id, file))
+        );
+        const failedFileSaves = fileResults.filter((r) => r.status === 'rejected').length;
+        if (failedFileSaves > 0) {
+          console.warn(`Persona ${pInfo.name}: ${failedFileSaves} file(s) failed to save`);
         }
         createdIds.push(persona.id);
       }
@@ -310,8 +320,12 @@ const SyntheticUserForm: React.FC<{ onComplete: () => void; defaultVisibility?: 
             onClick={async () => {
               setSavingVisibility(true);
               try {
-                for (const id of createdPersonaIds) {
-                  await personaApi.update(id, { visibility: visibilityChoice });
+                const results = await Promise.allSettled(
+                  createdPersonaIds.map((id) => personaApi.update(id, { visibility: visibilityChoice }))
+                );
+                const failed = results.filter((r) => r.status === 'rejected').length;
+                if (failed > 0) {
+                  throw new Error(`${failed} persona${failed > 1 ? 's' : ''} failed to save visibility`);
                 }
                 onComplete();
               } catch (err: any) {
@@ -707,11 +721,15 @@ const AdvisorForm: React.FC<{ onComplete: () => void; defaultVisibility?: 'priva
         const storedContent = combined.length > 50000
           ? combined.substring(0, 50000) + '\n\n[Content truncated for storage]'
           : combined;
-        await personaApi.createFile(persona.id, {
-          name: `Knowledge_Source.md`,
-          content: storedContent,
-          type: 'pdf_analysis'
-        });
+        try {
+          await personaApi.createFile(persona.id, {
+            name: `Knowledge_Source.md`,
+            content: storedContent,
+            type: 'pdf_analysis'
+          });
+        } catch (fileErr) {
+          console.warn('Knowledge source file failed to save for advisor persona:', fileErr);
+        }
         setCreatedPersonaIds([persona.id]);
         return;
       }
@@ -802,11 +820,15 @@ Limit your analysis to the key identifying information. Text sample: ${extracted
         ? extractedText.substring(0, 50000) + '\n\n[Content truncated for storage]'
         : extractedText;
         
-      await personaApi.createFile(persona.id, {
-        name: `Knowledge_Source.md`,
-        content: storedContent,
-        type: 'pdf_analysis'
-      });
+      try {
+        await personaApi.createFile(persona.id, {
+          name: `Knowledge_Source.md`,
+          content: storedContent,
+          type: 'pdf_analysis'
+        });
+      } catch (fileErr) {
+        console.warn('Knowledge source file failed to save for advisor persona:', fileErr);
+      }
       setCreatedPersonaIds([persona.id]);
     } catch (err: any) {
       if (!cancelledRef.current) {
@@ -857,8 +879,12 @@ Limit your analysis to the key identifying information. Text sample: ${extracted
             onClick={async () => {
               setSavingVisibility(true);
               try {
-                for (const id of createdPersonaIds) {
-                  await personaApi.update(id, { visibility: visibilityChoice });
+                const results = await Promise.allSettled(
+                  createdPersonaIds.map((id) => personaApi.update(id, { visibility: visibilityChoice }))
+                );
+                const failed = results.filter((r) => r.status === 'rejected').length;
+                if (failed > 0) {
+                  throw new Error(`${failed} persona${failed > 1 ? 's' : ''} failed to save visibility`);
                 }
                 onComplete();
               } catch (err: any) {

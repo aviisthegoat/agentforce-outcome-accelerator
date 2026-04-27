@@ -309,6 +309,7 @@ const SimulationPage: React.FC = () => {
   const [simulationHistory, setSimulationHistory] = useState<SimulationSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [focusGroups, setFocusGroups] = useState<FocusGroup[]>([]);
+  const [selectedFocusGroupId, setSelectedFocusGroupId] = useState<string>('');
   const [surveyGeneratedAnswers, setSurveyGeneratedAnswers] = useState<Record<number, string>>({});
   const [runnerSurveyQuestions, setRunnerSurveyQuestions] = useState<Record<string, SurveyQuestion[]>>({});
   const [persuasionContext, setPersuasionContext] = useState<{
@@ -402,6 +403,7 @@ const SimulationPage: React.FC = () => {
   const personaCountMin = selectedSimulation?.persona_count_min ?? 1;
   const { user } = useAuth();
   const personaCountMax = selectedSimulation?.persona_count_max ?? 1;
+  const usingFocusGroup = selectedFocusGroupId.length > 0;
   const selectedPersona = selectedPersonas[0] ?? null;
   const runnerDisplayName = getRunnerDisplayName(user?.username);
   const stablePersonaFallback = getStablePersonaFallbackName();
@@ -636,7 +638,7 @@ const SimulationPage: React.FC = () => {
       alert(`Please select at least ${minP} persona${minP > 1 ? 's' : ''}.`);
       return;
     }
-    if (selectedPersonas.length > maxP) {
+    if (!usingFocusGroup && selectedPersonas.length > maxP) {
       alert(`Please select at most ${maxP} persona${maxP > 1 ? 's' : ''}.`);
       return;
     }
@@ -1562,6 +1564,7 @@ const SimulationPage: React.FC = () => {
     setStage('selection');
     setCurrentSessionId(null);
     setSelectedSimulation(null);
+    setSelectedFocusGroupId('');
     setMode(null);
     setSelectedPersonas([]);
     setPersonaResults([]);
@@ -1679,6 +1682,8 @@ const SimulationPage: React.FC = () => {
                       onClick={() => { 
                         setSelectedSimulation(sim);
                         setStage('inputs');
+                        setSelectedFocusGroupId('');
+                        setSelectedPersonas([]);
                         // Reset input fields when selecting new simulation
                         setInputFields({});
                         setSurveyGeneratedAnswers({});
@@ -1738,34 +1743,25 @@ const SimulationPage: React.FC = () => {
                     </div>
                   ) : (
                     <>
-                      {personaCountMax > 1 && focusGroupsWithAllowedPersonas.length > 0 && (
+                      {focusGroupsWithAllowedPersonas.length > 0 && (
                         <div className="flex items-center gap-3 flex-wrap mb-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
                           <span className="text-sm font-semibold text-gray-700">Add focus group:</span>
                           <select
                             className="border border-gray-200 rounded-xl py-2 px-4 text-sm focus:ring-2 focus:ring-indigo-500 bg-white"
-                            value=""
+                            value={selectedFocusGroupId}
                             onChange={(e) => {
                               const id = e.target.value;
-                              e.target.value = '';
-                              if (!id) return;
+                              setSelectedFocusGroupId(id);
+                              if (!id) {
+                                setSelectedPersonas([]);
+                                return;
+                              }
                               const group = focusGroups.find(g => g.id === id);
                               if (!group) return;
-                              const allowedIds = new Set(allowedPersonasForSimulation.map(p => p.id));
                               const toAdd = group.personaIds
                                 .map(pid => allowedPersonasForSimulation.find(p => p.id === pid))
                                 .filter((p): p is Persona => p != null);
-                              setSelectedPersonas(prev => {
-                                const currentIds = new Set(prev.map(p => p.id));
-                                const added: Persona[] = [];
-                                for (const p of toAdd) {
-                                  if (currentIds.size >= personaCountMax) break;
-                                  if (!currentIds.has(p.id)) {
-                                    currentIds.add(p.id);
-                                    added.push(p);
-                                  }
-                                }
-                                return added.length ? [...prev, ...added] : prev;
-                              });
+                              setSelectedPersonas(toAdd);
                             }}
                           >
                             <option value="">Choose a group...</option>
@@ -1780,7 +1776,7 @@ const SimulationPage: React.FC = () => {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {allowedPersonasForSimulation.map(p => {
                         const isSelected = selectedPersonas.some(sp => sp.id === p.id);
-                        const atMax = selectedPersonas.length >= personaCountMax;
+                        const atMax = !usingFocusGroup && selectedPersonas.length >= personaCountMax;
                         const canToggle = isSelected || !atMax;
                         return (
                         <button
@@ -1788,6 +1784,7 @@ const SimulationPage: React.FC = () => {
                           type="button"
                           onClick={() => {
                             if (!canToggle) return;
+                            if (selectedFocusGroupId) setSelectedFocusGroupId('');
                             if (isSelected) {
                               setSelectedPersonas(prev => prev.filter(sp => sp.id !== p.id));
                             } else {
@@ -1856,7 +1853,7 @@ const SimulationPage: React.FC = () => {
                           </ul>
                         </div>
                         <button
-                          disabled={isLoading || selectedPersonas.length < personaCountMin || selectedPersonas.length > personaCountMax || !selectedSimulation || requiredBusinessProfileMissing}
+                          disabled={isLoading || selectedPersonas.length < personaCountMin || (!usingFocusGroup && selectedPersonas.length > personaCountMax) || !selectedSimulation || requiredBusinessProfileMissing}
                           onClick={startSimulation}
                           className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-30 transition-all flex items-center justify-center gap-4 group"
                         >
@@ -2184,7 +2181,7 @@ const SimulationPage: React.FC = () => {
                 })}
 
                 <button
-                  disabled={isLoading || selectedPersonas.length < personaCountMin || selectedPersonas.length > personaCountMax || !selectedSimulation || requiredBusinessProfileMissing}
+                  disabled={isLoading || selectedPersonas.length < personaCountMin || (!usingFocusGroup && selectedPersonas.length > personaCountMax) || !selectedSimulation || requiredBusinessProfileMissing}
                   onClick={startSimulation}
                   className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-lg shadow-2xl shadow-indigo-100 hover:bg-indigo-700 disabled:opacity-30 transition-all flex items-center justify-center gap-4 group"
                 >
